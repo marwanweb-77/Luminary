@@ -1,69 +1,226 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import ParticleCanvas from "@/components/ParticleCanvas";
+import HeroSection from "@/components/HeroSection";
+import Navbar from "@/components/Navbar";
+import ExploreSection from "@/components/ExploreSection";
+import WriteSection from "@/components/WriteSection";
+import ManifestoSection from "@/components/ManifestoSection";
+import CommunitySection from "@/components/CommunitySection";
+import Footer from "@/components/Footer";
+import ReaderModal from "@/components/ReaderModal";
+import { Post, SAMPLE_POSTS } from "@/lib/data";
 
 export default function Home() {
+  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load saved data from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedPosts = localStorage.getItem("luminary_custom_posts");
+      if (storedPosts) {
+        const parsed = JSON.parse(storedPosts);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPosts([...parsed, ...SAMPLE_POSTS]);
+        }
+      }
+
+      const storedLikes = localStorage.getItem("luminary_likes");
+      if (storedLikes) {
+        setLikedIds(new Set(JSON.parse(storedLikes)));
+      }
+
+      const storedBookmarks = localStorage.getItem("luminary_bookmarks");
+      if (storedBookmarks) {
+        setBookmarkedIds(new Set(JSON.parse(storedBookmarks)));
+      }
+    } catch {
+      // Local storage fallback
+    }
+
+    const timer = setTimeout(() => setIsLoading(false), 900);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Sync likes
+  const handleLikeToggle = (id: string) => {
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      try {
+        localStorage.setItem("luminary_likes", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Sync bookmarks
+  const handleBookmarkToggle = (id: string) => {
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      try {
+        localStorage.setItem(
+          "luminary_bookmarks",
+          JSON.stringify(Array.from(next))
+        );
+      } catch {}
+      return next;
+    });
+  };
+
+  // Publish a new piece
+  const handlePublishPost = (newPost: Post) => {
+    setPosts((prev) => {
+      const updated = [newPost, ...prev];
+      try {
+        const userCreated = updated.filter((p) => p.id.startsWith("user-"));
+        localStorage.setItem(
+          "luminary_custom_posts",
+          JSON.stringify(userCreated)
+        );
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleOpenSaved = () => {
+    const el = document.getElementById("explore");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="relative min-h-screen bg-[#050508] text-white selection:bg-violet-600/30 selection:text-white noise">
+      {/* 4K Particle Canvas Background */}
+      <ParticleCanvas />
+
+      {/* Opening Intro Flash / Loader */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            key="loader"
+            className="fixed inset-0 z-[100] bg-[#050508] flex flex-col items-center justify-center p-6"
+            exit={{ opacity: 0, scale: 1.04 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+          >
+            <motion.div
+              className="relative mb-6"
+              initial={{ scale: 0.6, rotate: -90, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="absolute inset-0 bg-violet-600 blur-2xl opacity-40 scale-150 rounded-full" />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 flex items-center justify-center shadow-2xl">
+                <svg
+                  viewBox="0 0 40 40"
+                  className="w-8 h-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path
+                    d="M20 5 L20 35 M5 12 Q20 5 35 12 M5 20 Q20 13 35 20 M5 28 Q20 21 35 28"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            <motion.h1
+              className="text-2xl font-bold tracking-tight text-white mb-2"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              Luminary
+            </motion.h1>
+
+            <motion.div
+              className="w-36 h-0.5 bg-white/10 rounded-full overflow-hidden mt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div
+                className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 rounded-full"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Website Structure */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar
+          bookmarksCount={bookmarkedIds.size}
+          onOpenSaved={handleOpenSaved}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        <main className="flex-1">
+          {/* Hero Section */}
+          <HeroSection
+            onExplore={() => {
+              document.getElementById("explore")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            onWrite={() => {
+              document.getElementById("write")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+
+          {/* Explore / Reading Feed Section */}
+          <ExploreSection
+            posts={posts}
+            onOpenPost={(post) => setSelectedPost(post)}
+            likedIds={likedIds}
+            bookmarkedIds={bookmarkedIds}
+            onLikeToggle={handleLikeToggle}
+            onBookmarkToggle={handleBookmarkToggle}
+          />
+
+          {/* Functional Studio / Write Section */}
+          <WriteSection onPublish={handlePublishPost} />
+
+          {/* Manifesto Section */}
+          <ManifestoSection />
+
+          {/* Community & Writers Section */}
+          <CommunitySection />
+        </main>
+
+        {/* Footer */}
+        <Footer />
+      </div>
+
+      {/* Reader Modal (Active when clicking any piece) */}
+      {selectedPost && (
+        <ReaderModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          onLike={handleLikeToggle}
+          onBookmark={handleBookmarkToggle}
+          isLiked={likedIds.has(selectedPost.id)}
+          isBookmarked={bookmarkedIds.has(selectedPost.id)}
+        />
+      )}
     </div>
   );
 }
